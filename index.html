@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spectra</title>
+<meta name="description" content="An audio analysis suite that runs entirely in the browser. Spectrogram, loudness, stereo field, tempo and key." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0b1113; --surface:#141d20; --raised:#1b262a; --line:#243136;
+  --ink:#eef3f2; --muted:#8fa3a6; --dim:#5d7075;
+  --gold:#e0a04a; --teal:#4fb3ab; --red:#d2694e;
+  --shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 10px 22px -12px rgba(0,0,0,.9), 0 2px 4px rgba(0,0,0,.4);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{padding:0 16px 64px}
+.wrap{max-width:1080px;margin:0 auto}
+header{padding:44px 0 26px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+h1{font-family:var(--mono);font-weight:700;font-size:26px;letter-spacing:.14em;margin:0}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);font-size:14px;margin:6px 0 0;max-width:46ch;line-height:1.5}
+.badge{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.drop{padding:22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.drop.over{border-color:var(--gold)}
+button{font:inherit;font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:10px 16px;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 3px 0 -1px rgba(0,0,0,.5),0 6px 12px -8px #000;transition:transform .08s ease}
+button:hover{border-color:#31434a}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+button.primary{background:var(--gold);color:#20160a;border-color:#c98c39;font-weight:700}
+button[disabled]{opacity:.4;cursor:not-allowed}
+.hint{color:var(--dim);font-size:13px}
+.grid{display:grid;gap:14px;margin-top:14px}
+.cols{grid-template-columns:repeat(auto-fit,minmax(168px,1fr))}
+.stat{padding:16px 18px}
+.stat .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.stat .v{font-family:var(--mono);font-size:27px;font-weight:700;margin-top:8px;color:var(--gold);line-height:1}
+.stat .v small{font-size:13px;color:var(--muted);font-weight:500;margin-left:3px}
+.stat .n{color:var(--muted);font-size:12px;margin-top:7px;line-height:1.45}
+.panel{padding:16px}
+.ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:12px;flex-wrap:wrap}
+.ph h2{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0;color:var(--muted);font-weight:500}
+.ph .meta{font-family:var(--mono);font-size:11px;color:var(--dim)}
+canvas{display:block;width:100%;border-radius:8px;background:#080d0f;border:1px solid var(--line)}
+.two{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+@media(max-width:720px){.two{grid-template-columns:1fr}}
+.tr{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.time{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:96px}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--gold);background:transparent}
+footer{color:var(--dim);font-size:13px;margin-top:34px;line-height:1.6;border-top:1px solid var(--line);padding-top:18px}
+footer a{color:var(--muted)}
+.bar{height:9px;background:#0a1012;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--teal);width:0;transition:width .06s linear}
+.lv{display:grid;grid-template-columns:18px 1fr;gap:8px 10px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--dim)}
+.status{font-family:var(--mono);font-size:12px;color:var(--teal)}
+.legend{display:flex;gap:14px;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:9px;flex-wrap:wrap}
+.legend b{color:var(--muted);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>SPEC<span>TRA</span></h1>
+    <p class="sub">An audio analysis suite that runs entirely in your browser. Nothing is uploaded. Drop a file to read its spectrum, loudness, stereo field, tempo and key.</p>
+  </div>
+  <div class="badge">NO SERVER / NO UPLOAD</div>
+</header>
+
+<div class="card drop" id="drop">
+  <button class="primary" id="pick">Open audio file</button>
+  <button id="demo">Load demo signal</button>
+  <span class="hint" id="hint">Or drag a wav, mp3, flac or m4a anywhere on this page.</span>
+  <input type="file" id="file" accept="audio/*" hidden />
+</div>
+
+<div class="card panel" style="margin-top:14px">
+  <div class="tr">
+    <button id="play" disabled>Play</button>
+    <span class="time" id="time">0:00 / 0:00</span>
+    <input type="range" id="seek" value="0" min="0" max="1000" disabled />
+    <span class="status" id="status"></span>
+  </div>
+</div>
+
+<div class="grid cols" style="margin-top:14px">
+  <div class="card stat"><div class="k">Integrated</div><div class="v" id="s-lufs">--<small>LUFS</small></div><div class="n">ITU-R BS.1770-4, gated</div></div>
+  <div class="card stat"><div class="k">Loudness range</div><div class="v" id="s-lra">--<small>LU</small></div><div class="n">10th to 95th percentile</div></div>
+  <div class="card stat"><div class="k">Sample peak</div><div class="v" id="s-peak">--<small>dBFS</small></div><div class="n">Loudest single sample</div></div>
+  <div class="card stat"><div class="k">Tempo</div><div class="v" id="s-bpm">--<small>BPM</small></div><div class="n">Onset flux autocorrelation</div></div>
+  <div class="card stat"><div class="k">Key</div><div class="v" id="s-key">--</div><div class="n">Krumhansl profile match</div></div>
+</div>
+
+<div class="card panel" style="margin-top:14px">
+  <div class="ph"><h2>Spectrogram</h2><span class="meta" id="sg-meta">4096 point FFT / logarithmic frequency</span></div>
+  <canvas id="sg" height="300"></canvas>
+  <div class="legend"><span><b>20 Hz</b> bottom</span><span><b>20 kHz</b> top</span><span>colour is magnitude, dark to gold</span></div>
+</div>
+
+<div class="two" style="margin-top:14px">
+  <div class="card panel">
+    <div class="ph"><h2>Stereo field</h2><span class="meta" id="corr-meta">correlation --</span></div>
+    <canvas id="gonio" height="260"></canvas>
+    <div class="legend"><span>vertical is mono</span><span>horizontal is out of phase</span></div>
+  </div>
+  <div class="card panel">
+    <div class="ph"><h2>Levels</h2><span class="meta" id="st-meta">short term --</span></div>
+    <div class="lv" style="margin:10px 0 16px">
+      <span>L</span><div class="bar"><i id="mL"></i></div>
+      <span>R</span><div class="bar"><i id="mR"></i></div>
+    </div>
+    <canvas id="wave" height="150"></canvas>
+    <div class="legend"><span>waveform overview, playhead in gold</span></div>
+  </div>
+</div>
+
+<footer>
+  Built by <a href="https://bxzex.com">bxzex</a>. Web Audio API, a hand written radix-2 FFT, K-weighted loudness per ITU-R BS.1770-4, and no dependencies at all.
+  <a href="https://github.com/bxzex/spectra">Source on GitHub</a>.
+</footer>
+</div>
+<script>
+/* ---------- FFT: iterative radix-2, in place ---------- */
+function fft(re, im){
+  const n = re.length;
+  for(let i=1,j=0;i<n;i++){
+    let bit=n>>1;
+    for(;j&bit;bit>>=1) j^=bit;
+    j^=bit;
+    if(i<j){ let t=re[i];re[i]=re[j];re[j]=t; t=im[i];im[i]=im[j];im[j]=t; }
+  }
+  for(let len=2;len<=n;len<<=1){
+    const ang=-2*Math.PI/len, wr=Math.cos(ang), wi=Math.sin(ang);
+    for(let i=0;i<n;i+=len){
+      let cr=1, ci=0;
+      for(let k=0;k<len/2;k++){
+        const ur=re[i+k], ui=im[i+k];
+        const vr=re[i+k+len/2]*cr-im[i+k+len/2]*ci;
+        const vi=re[i+k+len/2]*ci+im[i+k+len/2]*cr;
+        re[i+k]=ur+vr; im[i+k]=ui+vi;
+        re[i+k+len/2]=ur-vr; im[i+k+len/2]=ui-vi;
+        const ncr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=ncr;
+      }
+    }
+  }
+}
+const hann = n => { const w=new Float32Array(n); for(let i=0;i<n;i++) w[i]=0.5-0.5*Math.cos(2*Math.PI*i/(n-1)); return w; };
+
+/* ---------- loudness: ITU-R BS.1770-4 ---------- */
+// Two stage K-weighting run through an OfflineAudioContext, then 400 ms
+// mean square blocks with 75% overlap and the two stage gate.
+async function kWeight(buffer){
+  const ctx = new OfflineAudioContext(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  const src = ctx.createBufferSource(); src.buffer = buffer;
+  const shelf = ctx.createBiquadFilter();
+  shelf.type='highshelf'; shelf.frequency.value=1681; shelf.gain.value=3.999; shelf.Q.value=0.7071;
+  const hp = ctx.createBiquadFilter();
+  hp.type='highpass'; hp.frequency.value=38; hp.Q.value=0.5;
+  src.connect(shelf).connect(hp).connect(ctx.destination);
+  src.start();
+  return ctx.startRendering();
+}
+function blockLoudness(k, blockSec){
+  const sr = k.sampleRate, size = Math.round(blockSec*sr), hop = Math.round(size/4);
+  const chans = [], w = [1.0, 1.0, 1.0, 1.41, 1.41];
+  for(let c=0;c<k.numberOfChannels;c++) chans.push(k.getChannelData(c));
+  const out=[];
+  for(let s=0;s+size<=k.length;s+=hop){
+    let sum=0;
+    for(let c=0;c<chans.length;c++){
+      const d=chans[c]; let m=0;
+      for(let i=s;i<s+size;i++) m+=d[i]*d[i];
+      sum += (w[c]||1) * (m/size);
+    }
+    out.push(-0.691 + 10*Math.log10(sum+1e-12));
+  }
+  return out;
+}
+function gatedMean(blocks, relative){
+  const abs = blocks.filter(b => b > -70);
+  if(!abs.length) return -Infinity;
+  const mean = arr => -0.691 + 10*Math.log10(arr.reduce((a,b)=>a+Math.pow(10,(b+0.691)/10),0)/arr.length);
+  const thresh = mean(abs) + relative;
+  const kept = abs.filter(b => b > thresh);
+  return mean(kept.length ? kept : abs);
+}
+function lra(blocks){
+  const abs = blocks.filter(b => b > -70);
+  if(abs.length < 4) return 0;
+  const mean = arr => -0.691 + 10*Math.log10(arr.reduce((a,b)=>a+Math.pow(10,(b+0.691)/10),0)/arr.length);
+  const kept = abs.filter(b => b > mean(abs) - 20).sort((a,b)=>a-b);
+  if(kept.length < 2) return 0;
+  const at = p => kept[Math.min(kept.length-1, Math.max(0, Math.round(p*(kept.length-1))))];
+  return at(0.95) - at(0.10);
+}
+
+/* ---------- tempo: onset flux + autocorrelation ---------- */
+function detectBPM(mono, sr){
+  const hop = 512, n = 1024, w = hann(n), env = [];
+  let prev = null;
+  for(let s=0; s+n<=mono.length; s+=hop){
+    const re = new Float32Array(n), im = new Float32Array(n);
+    for(let i=0;i<n;i++) re[i]=mono[s+i]*w[i];
+    fft(re, im);
+    const mag = new Float32Array(n/2);
+    for(let i=0;i<n/2;i++) mag[i]=Math.sqrt(re[i]*re[i]+im[i]*im[i]);
+    let flux = 0;
+    if(prev) for(let i=0;i<n/2;i++){ const d=mag[i]-prev[i]; if(d>0) flux+=d; }
+    env.push(flux); prev = mag;
+  }
+  // normalise and remove the slow moving mean so autocorrelation sees onsets only
+  const mean = env.reduce((a,b)=>a+b,0)/env.length;
+  const e = env.map(v => v-mean);
+  const rate = sr/hop;
+  let best = 0, bestBpm = 0;
+  for(let bpm=60; bpm<=190; bpm+=0.25){
+    const lag = Math.round(60/bpm*rate);
+    if(lag<2 || lag>=e.length) continue;
+    let acc=0;
+    for(let i=0;i+lag<e.length;i++) acc += e[i]*e[i+lag];
+    acc /= (e.length-lag);
+    if(acc>best){ best=acc; bestBpm=bpm; }
+  }
+  return bestBpm ? Math.round(bestBpm*10)/10 : 0;
+}
+
+/* ---------- key: chroma + Krumhansl-Schmuckler ---------- */
+const NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const MAJ=[6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+const MIN=[6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+function detectKey(mono, sr){
+  const n=4096, w=hann(n), chroma=new Float64Array(12);
+  const step = Math.max(n, Math.floor(mono.length/220));
+  for(let s=0; s+n<=mono.length; s+=step){
+    const re=new Float32Array(n), im=new Float32Array(n);
+    for(let i=0;i<n;i++) re[i]=mono[s+i]*w[i];
+    fft(re,im);
+    for(let i=1;i<n/2;i++){
+      const f = i*sr/n;
+      if(f<55 || f>2200) continue;
+      const mag = Math.sqrt(re[i]*re[i]+im[i]*im[i]);
+      const pc = ((Math.round(12*Math.log2(f/440))+9)%12+12)%12;
+      chroma[pc]+=mag;
+    }
+  }
+  const corr=(a,b)=>{
+    const ma=a.reduce((x,y)=>x+y,0)/12, mb=b.reduce((x,y)=>x+y,0)/12;
+    let num=0,da=0,db=0;
+    for(let i=0;i<12;i++){ const x=a[i]-ma, y=b[i]-mb; num+=x*y; da+=x*x; db+=y*y; }
+    return num/(Math.sqrt(da*db)+1e-9);
+  };
+  let best={score:-2,name:"--"};
+  for(let r=0;r<12;r++){
+    const rot = p => p.map((_,i)=>p[(i+12-r)%12]);
+    const cm = corr([...chroma], rot(MAJ));
+    const cn = corr([...chroma], rot(MIN));
+    if(cm>best.score) best={score:cm,name:NOTES[r]+" major"};
+    if(cn>best.score) best={score:cn,name:NOTES[r]+" minor"};
+  }
+  return best.name;
+}
+
+/* ---------- colour ramp: dark slate to teal to gold to bone ---------- */
+const STOPS=[[8,13,15],[22,62,70],[79,179,171],[224,160,74],[246,234,216]];
+function ramp(t){
+  t=Math.max(0,Math.min(1,t))*(STOPS.length-1);
+  const i=Math.min(STOPS.length-2,Math.floor(t)), f=t-i, a=STOPS[i], b=STOPS[i+1];
+  return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+}
+
+/* ---------- app ---------- */
+const $ = id => document.getElementById(id);
+let ac, buffer, source, analyser, splitL, splitR, dataL, dataR, freq;
+let playing=false, startedAt=0, offset=0, raf=0;
+
+const sg=$("sg"), sgx=sg.getContext("2d");
+const go=$("gonio"), gox=go.getContext("2d");
+const wv=$("wave"), wvx=wv.getContext("2d");
+function fit(c){ const r=c.getBoundingClientRect(); const d=window.devicePixelRatio||1;
+  if(c.width!==Math.round(r.width*d)){ c.width=Math.round(r.width*d); c.height=Math.round(c.height*d/(c._s||1)*1); }
+  return d; }
+function sizeAll(){
+  [[sg,300],[go,260],[wv,150]].forEach(([c,h])=>{
+    const d=window.devicePixelRatio||1, r=c.getBoundingClientRect();
+    c.width=Math.max(1,Math.round(r.width*d)); c.height=Math.round(h*d); c.style.height=h+"px";
+  });
+  sgx.fillStyle="#080d0f"; sgx.fillRect(0,0,sg.width,sg.height);
+  if(buffer) drawWave();
+}
+window.addEventListener("resize", sizeAll);
+
+function setStatus(t){ $("status").textContent = t; }
+
+async function load(arrayBuffer, label){
+  ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+  setStatus("decoding");
+  buffer = await ac.decodeAudioData(arrayBuffer);
+  $("hint").textContent = label + "  /  " + buffer.numberOfChannels + " ch  /  " +
+    buffer.sampleRate.toLocaleString() + " Hz  /  " + fmt(buffer.duration);
+  $("play").disabled=false; $("seek").disabled=false; offset=0;
+  sgx.fillStyle="#080d0f"; sgx.fillRect(0,0,sg.width,sg.height);
+  drawWave();
+  setStatus("analysing");
+  await new Promise(r=>setTimeout(r,16));
+  await analyse();
+  setStatus("ready");
+}
+
+async function analyse(){
+  const k = await kWeight(buffer);
+  const b400 = blockLoudness(k, 0.4);
+  const b3 = blockLoudness(k, 3.0);
+  const I = gatedMean(b400, -10);
+  $("s-lufs").innerHTML = (isFinite(I)?I.toFixed(1):"--") + "<small>LUFS</small>";
+  $("s-lra").innerHTML = lra(b3).toFixed(1) + "<small>LU</small>";
+
+  let peak=0;
+  for(let c=0;c<buffer.numberOfChannels;c++){
+    const d=buffer.getChannelData(c);
+    for(let i=0;i<d.length;i++){ const a=Math.abs(d[i]); if(a>peak) peak=a; }
+  }
+  $("s-peak").innerHTML = (20*Math.log10(peak+1e-12)).toFixed(1) + "<small>dBFS</small>";
+
+  // downmix once, then reuse for tempo and key
+  const L=buffer.getChannelData(0), R=buffer.numberOfChannels>1?buffer.getChannelData(1):L;
+  const mono=new Float32Array(buffer.length);
+  for(let i=0;i<buffer.length;i++) mono[i]=(L[i]+R[i])/2;
+  const cap = Math.min(mono.length, buffer.sampleRate*60);
+  const slice = mono.subarray(0, cap);
+  const bpm = detectBPM(slice, buffer.sampleRate);
+  $("s-bpm").innerHTML = (bpm?bpm.toFixed(1):"--") + "<small>BPM</small>";
+  $("s-key").textContent = detectKey(slice, buffer.sampleRate);
+}
+
+function drawWave(){
+  const w=wv.width, h=wv.height, d=buffer.getChannelData(0), step=Math.floor(d.length/w)||1;
+  wvx.fillStyle="#080d0f"; wvx.fillRect(0,0,w,h);
+  wvx.fillStyle="#2f6f72";
+  for(let x=0;x<w;x++){
+    let mn=1,mx=-1;
+    for(let i=x*step;i<(x+1)*step && i<d.length;i++){ if(d[i]<mn)mn=d[i]; if(d[i]>mx)mx=d[i]; }
+    const y1=(1-mx)*h/2, y2=(1-mn)*h/2;
+    wvx.fillRect(x, y1, 1, Math.max(1,y2-y1));
+  }
+}
+function playhead(){
+  if(!buffer) return;
+  drawWave();
+  const x = (pos()/buffer.duration)*wv.width;
+  wvx.fillStyle="#e0a04a"; wvx.fillRect(x,0,2,wv.height);
+}
+
+function pos(){ return playing ? Math.min(buffer.duration, offset + (ac.currentTime-startedAt)) : offset; }
+function fmt(s){ s=Math.max(0,s|0); return (s/60|0)+":"+String(s%60).padStart(2,"0"); }
+
+function start(from){
+  stop(true);
+  source = ac.createBufferSource(); source.buffer = buffer;
+  analyser = ac.createAnalyser(); analyser.fftSize = 8192; analyser.smoothingTimeConstant = 0.55;
+  freq = new Uint8Array(analyser.frequencyBinCount);
+  const split = ac.createChannelSplitter(2);
+  splitL = ac.createAnalyser(); splitR = ac.createAnalyser();
+  splitL.fftSize = splitR.fftSize = 2048;
+  dataL = new Float32Array(2048); dataR = new Float32Array(2048);
+  source.connect(analyser).connect(ac.destination);
+  source.connect(split);
+  split.connect(splitL,0); split.connect(splitR, buffer.numberOfChannels>1?1:0);
+  source.onended = () => { if(playing && pos()>=buffer.duration-0.05){ playing=false; offset=0; $("play").textContent="Play"; } };
+  offset = from; startedAt = ac.currentTime;
+  source.start(0, from);
+  playing = true; $("play").textContent="Pause";
+  loop();
+}
+function stop(keep){
+  if(source){ try{source.onended=null;source.stop();}catch(e){} source.disconnect(); source=null; }
+  if(!keep){ playing=false; $("play").textContent="Play"; cancelAnimationFrame(raf); }
+}
+
+function loop(){
+  raf = requestAnimationFrame(loop);
+  const t = pos();
+  $("time").textContent = fmt(t)+" / "+fmt(buffer.duration);
+  $("seek").value = (t/buffer.duration)*1000;
+  playhead();
+
+  // spectrogram: scroll left one column, draw the newest slice on the right
+  const w=sg.width, h=sg.height, d=window.devicePixelRatio||1, col=Math.max(1,Math.round(2*d));
+  analyser.getByteFrequencyData(freq);
+  sgx.drawImage(sg, -col, 0);
+  const nyq = ac.sampleRate/2, binHz = nyq/freq.length, fmin=20, fmax=Math.min(20000,nyq);
+  const img = sgx.createImageData(col, h);
+  for(let y=0;y<h;y++){
+    const f = fmin*Math.pow(fmax/fmin, 1-y/h);
+    const bi = f/binHz, i0=Math.floor(bi), frac=bi-i0;
+    const v = ((freq[i0]||0)*(1-frac) + (freq[i0+1]||0)*frac)/255;
+    const [r,g,b] = ramp(Math.pow(v,0.85));
+    for(let x=0;x<col;x++){
+      const o=((y*col)+x)*4;
+      img.data[o]=r; img.data[o+1]=g; img.data[o+2]=b; img.data[o+3]=255;
+    }
+  }
+  sgx.putImageData(img, w-col, 0);
+
+  // stereo field: lissajous rotated 45 degrees, plus correlation coefficient
+  splitL.getFloatTimeDomainData(dataL); splitR.getFloatTimeDomainData(dataR);
+  const gw=go.width, gh=go.height;
+  gox.fillStyle="rgba(8,13,15,.30)"; gox.fillRect(0,0,gw,gh);
+  gox.strokeStyle="#1d2a2e"; gox.lineWidth=1*d;
+  gox.beginPath(); gox.moveTo(gw/2,0); gox.lineTo(gw/2,gh); gox.moveTo(0,gh/2); gox.lineTo(gw,gh/2); gox.stroke();
+  const sc = Math.min(gw,gh)/2*0.92;
+  let sl=0,sr=0,slr=0,pl=0,pr=0;
+  gox.fillStyle="#6fd3c9";
+  for(let i=0;i<dataL.length;i++){
+    const l=dataL[i], r=dataR[i];
+    sl+=l*l; sr+=r*r; slr+=l*r;
+    if(Math.abs(l)>pl) pl=Math.abs(l);
+    if(Math.abs(r)>pr) pr=Math.abs(r);
+    const x = gw/2 + (l-r)/Math.SQRT2*sc;
+    const y = gh/2 - (l+r)/Math.SQRT2*sc;
+    gox.fillRect(x,y,1.4*d,1.4*d);
+  }
+  const corr = slr/(Math.sqrt(sl*sr)+1e-12);
+  $("corr-meta").textContent = "correlation "+(isFinite(corr)?corr.toFixed(2):"--");
+  $("mL").style.width = Math.min(100,(20*Math.log10(pl+1e-9)+60)/60*100)+"%";
+  $("mR").style.width = Math.min(100,(20*Math.log10(pr+1e-9)+60)/60*100)+"%";
+  const rms = Math.sqrt((sl+sr)/(dataL.length*2));
+  $("st-meta").textContent = "rms "+(20*Math.log10(rms+1e-9)).toFixed(1)+" dBFS";
+}
+
+/* ---------- demo signal: Am F C G at 120 BPM, rendered offline ---------- */
+async function demoSignal(){
+  const sr=44100, bars=4, secPerBar=2, len=sr*bars*secPerBar;
+  const ctx=new OfflineAudioContext(2,len,sr);
+  const chords=[[220,261.63,329.63],[174.61,220,261.63],[261.63,329.63,392],[196,246.94,293.66]];
+  chords.forEach((ch,bar)=>{
+    ch.forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain(), p=ctx.createStereoPanner();
+      o.type = i===0 ? "triangle" : "sawtooth"; o.frequency.value=f;
+      p.pan.value = (i-1)*0.45;
+      const t0=bar*secPerBar;
+      g.gain.setValueAtTime(0,t0);
+      g.gain.linearRampToValueAtTime(0.16,t0+0.05);
+      g.gain.setTargetAtTime(0.0001,t0+secPerBar-0.5,0.18);
+      o.connect(g).connect(p).connect(ctx.destination);
+      o.start(t0); o.stop(t0+secPerBar);
+    });
+  });
+  for(let b=0;b<bars*4;b++){                       // kick on every beat, 120 BPM
+    const t=b*0.5, o=ctx.createOscillator(), g=ctx.createGain();
+    o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(45,t+0.09);
+    g.gain.setValueAtTime(0.9,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.25);
+  }
+  return ctx.startRendering();
+}
+
+/* ---------- wiring ---------- */
+$("pick").onclick = () => $("file").click();
+$("file").onchange = async e => {
+  const f=e.target.files[0]; if(!f) return;
+  load(await f.arrayBuffer(), f.name).catch(err=>setStatus("could not decode that file"));
+};
+$("demo").onclick = async () => {
+  ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+  setStatus("rendering");
+  buffer = await demoSignal();
+  $("hint").textContent = "demo signal  /  2 ch  /  44,100 Hz  /  0:16";
+  $("play").disabled=false; $("seek").disabled=false; offset=0;
+  sgx.fillStyle="#080d0f"; sgx.fillRect(0,0,sg.width,sg.height);
+  drawWave(); setStatus("analysing");
+  await new Promise(r=>setTimeout(r,16));
+  await analyse(); setStatus("ready");
+};
+$("play").onclick = () => {
+  if(!buffer) return;
+  if(ac.state==="suspended") ac.resume();
+  if(playing){ const t=pos(); stop(); offset=t; }
+  else start(offset>=buffer.duration?0:offset);
+};
+$("seek").oninput = e => {
+  if(!buffer) return;
+  const t = e.target.value/1000*buffer.duration;
+  if(playing) start(t); else { offset=t; playhead(); $("time").textContent=fmt(t)+" / "+fmt(buffer.duration); }
+};
+const drop=$("drop");
+["dragenter","dragover"].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+document.addEventListener("drop", async e => {
+  const f=e.dataTransfer.files[0]; if(!f) return;
+  load(await f.arrayBuffer(), f.name).catch(()=>setStatus("could not decode that file"));
+});
+sizeAll();
+</script>
+</body>
+</html>
