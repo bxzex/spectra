@@ -31,8 +31,7 @@ body{
 /* --- chassis rail across the top: wordmark, transport, source --- */
 .rail{background:var(--rail);border:1px solid var(--line);border-radius:16px;box-shadow:var(--proud);margin-top:22px;padding:16px 20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
 .mark{display:flex;align-items:baseline;gap:10px;margin-right:4px}
-.mark b{font-family:var(--silk);font-weight:700;font-size:34px;letter-spacing:.22em;text-transform:uppercase;line-height:1;color:var(--ink)}
-.mark b i{color:var(--amber);font-style:normal}
+.mark b{font-family:var(--silk);font-weight:700;font-size:34px;letter-spacing:-.01em;line-height:1;color:var(--ink)}
 .mark span{font-family:var(--silk);font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
 .sep{width:1px;align-self:stretch;background:var(--line);min-height:34px}
 .transport{display:flex;align-items:center;gap:14px;flex:1;min-width:280px}
@@ -87,7 +86,7 @@ footer a{color:var(--muted)}
 <div class="wrap">
 
 <div class="rail drop" id="drop">
-  <div class="mark"><b>SPEC<i>TRA</i></b><span>Audio analyser</span></div>
+  <div class="mark"><b>Spectra</b><span>Audio analyser</span></div>
   <div class="sep"></div>
   <div class="transport">
     <span class="lamp" id="lamp"></span>
