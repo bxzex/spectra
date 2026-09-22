@@ -217,16 +217,26 @@ function detectBPM(mono, sr){
   const mean = env.reduce((a,b)=>a+b,0)/env.length;
   const e = env.map(v => v-mean);
   const rate = sr/hop;
-  let best = 0, bestBpm = 0;
-  for(let bpm=60; bpm<=190; bpm+=0.25){
-    const lag = Math.round(60/bpm*rate);
-    if(lag<2 || lag>=e.length) continue;
+  // Search integer lags rather than a BPM grid: two nearby tempos can round to
+  // the same lag, and stepping BPM would then pick whichever came first.
+  const lo = Math.max(2, Math.floor(60/190*rate)), hi = Math.min(e.length-2, Math.ceil(60/60*rate));
+  const ac = new Float64Array(hi+1);
+  let best = -Infinity, bestLag = 0;
+  for(let lag=lo; lag<=hi; lag++){
     let acc=0;
     for(let i=0;i+lag<e.length;i++) acc += e[i]*e[i+lag];
     acc /= (e.length-lag);
-    if(acc>best){ best=acc; bestBpm=bpm; }
+    ac[lag]=acc;
+    if(acc>best){ best=acc; bestLag=lag; }
   }
-  return bestBpm ? Math.round(bestBpm*10)/10 : 0;
+  if(!bestLag) return 0;
+  // parabolic interpolation through the peak, so resolution beats one hop
+  let lag = bestLag;
+  if(bestLag>lo && bestLag<hi){
+    const a=ac[bestLag-1], b=ac[bestLag], c=ac[bestLag+1], den=a-2*b+c;
+    if(den) lag = bestLag + 0.5*(a-c)/den;
+  }
+  return Math.round(60/(lag/rate)*10)/10;
 }
 
 /* ---------- key: chroma + Krumhansl-Schmuckler ---------- */
@@ -281,9 +291,6 @@ let playing=false, startedAt=0, offset=0, raf=0;
 const sg=$("sg"), sgx=sg.getContext("2d");
 const go=$("gonio"), gox=go.getContext("2d");
 const wv=$("wave"), wvx=wv.getContext("2d");
-function fit(c){ const r=c.getBoundingClientRect(); const d=window.devicePixelRatio||1;
-  if(c.width!==Math.round(r.width*d)){ c.width=Math.round(r.width*d); c.height=Math.round(c.height*d/(c._s||1)*1); }
-  return d; }
 function sizeAll(){
   [[sg,300],[go,260],[wv,150]].forEach(([c,h])=>{
     const d=window.devicePixelRatio||1, r=c.getBoundingClientRect();
