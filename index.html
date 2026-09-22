@@ -7,120 +7,138 @@
 <meta name="description" content="An audio analysis suite that runs entirely in the browser. Spectrogram, loudness, stereo field, tempo and key." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
 :root{
-  --bg:#0b1113; --surface:#141d20; --raised:#1b262a; --line:#243136;
-  --ink:#eef3f2; --muted:#8fa3a6; --dim:#5d7075;
-  --gold:#e0a04a; --teal:#4fb3ab; --red:#d2694e;
-  --shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 10px 22px -12px rgba(0,0,0,.9), 0 2px 4px rgba(0,0,0,.4);
+  --bg:#070809; --panel:#12161a; --rail:#0d1114; --well:#040506;
+  --line:#242c31; --edge:#333d44;
+  --ink:#f3efe7; --muted:#97a3a8; --dim:#5f6d73;
+  --amber:#f5a524; --vu:#35c2a5; --hot:#e05f3e;
+  --silk:"Barlow Condensed",Inter,system-ui,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
-  --r:14px;
+  /* a panel sits proud of the chassis; a well is milled into it */
+  --proud:0 1px 0 rgba(255,255,255,.055) inset, 0 -1px 0 rgba(0,0,0,.6) inset, 0 14px 26px -16px #000;
+  --well-sh:0 2px 5px rgba(0,0,0,.85) inset, 0 0 0 1px #000 inset;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-body{padding:0 16px 64px}
-.wrap{max-width:1080px;margin:0 auto}
-header{padding:44px 0 26px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
-h1{font-family:var(--mono);font-weight:700;font-size:26px;letter-spacing:.14em;margin:0}
-h1 span{color:var(--gold)}
-.sub{color:var(--muted);font-size:14px;margin:6px 0 0;max-width:46ch;line-height:1.5}
-.badge{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
-.drop{padding:22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.drop.over{border-color:var(--gold)}
-button{font:inherit;font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:10px 16px;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 3px 0 -1px rgba(0,0,0,.5),0 6px 12px -8px #000;transition:transform .08s ease}
-button:hover{border-color:#31434a}
-button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
-button.primary{background:var(--gold);color:#20160a;border-color:#c98c39;font-weight:700}
-button[disabled]{opacity:.4;cursor:not-allowed}
-.hint{color:var(--dim);font-size:13px}
-.grid{display:grid;gap:14px;margin-top:14px}
-.cols{grid-template-columns:repeat(auto-fit,minmax(168px,1fr))}
-.stat{padding:16px 18px}
-.stat .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
-.stat .v{font-family:var(--mono);font-size:27px;font-weight:700;margin-top:8px;color:var(--gold);line-height:1}
-.stat .v small{font-size:13px;color:var(--muted);font-weight:500;margin-left:3px}
-.stat .n{color:var(--muted);font-size:12px;margin-top:7px;line-height:1.45}
-.panel{padding:16px}
-.ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:12px;flex-wrap:wrap}
-.ph h2{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0;color:var(--muted);font-weight:500}
-.ph .meta{font-family:var(--mono);font-size:11px;color:var(--dim)}
-canvas{display:block;width:100%;border-radius:8px;background:#080d0f;border:1px solid var(--line)}
-.two{display:grid;gap:14px;grid-template-columns:1fr 1fr}
-@media(max-width:720px){.two{grid-template-columns:1fr}}
-.tr{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.time{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:96px}
-input[type=range]{flex:1;min-width:140px;accent-color:var(--gold);background:transparent}
-footer{color:var(--dim);font-size:13px;margin-top:34px;line-height:1.6;border-top:1px solid var(--line);padding-top:18px}
+body{
+  padding:0 18px 60px;
+  background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px);
+}
+.wrap{max-width:1140px;margin:0 auto}
+
+/* --- chassis rail across the top: wordmark, transport, source --- */
+.rail{background:var(--rail);border:1px solid var(--line);border-radius:16px;box-shadow:var(--proud);margin-top:22px;padding:16px 20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.mark{display:flex;align-items:baseline;gap:10px;margin-right:4px}
+.mark b{font-family:var(--silk);font-weight:700;font-size:34px;letter-spacing:.22em;text-transform:uppercase;line-height:1;color:var(--ink)}
+.mark b i{color:var(--amber);font-style:normal}
+.mark span{font-family:var(--silk);font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+.sep{width:1px;align-self:stretch;background:var(--line);min-height:34px}
+.transport{display:flex;align-items:center;gap:14px;flex:1;min-width:280px}
+.lamp{width:8px;height:8px;border-radius:50%;background:#2a3338;box-shadow:0 0 0 1px #000 inset}
+.lamp.on{background:var(--vu)}
+button{font-family:var(--silk);font-weight:600;font-size:15px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);background:#1b2228;border:1px solid var(--edge);border-radius:8px;padding:9px 16px;cursor:pointer;
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 3px 0 -1px #05070880,0 7px 14px -9px #000;transition:transform .07s ease}
+button:hover{background:#222a31}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset}
+button.primary{background:var(--amber);color:#2a1a04;border-color:#c9861b;font-weight:700}
+button[disabled]{opacity:.38;cursor:not-allowed}
+.time{font-family:var(--mono);font-size:13px;color:var(--muted);min-width:98px;letter-spacing:.02em}
+input[type=range]{flex:1;min-width:130px;accent-color:var(--amber);background:transparent;height:22px}
+.status{font-family:var(--silk);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--vu);min-width:74px}
+.src{display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;border-top:1px solid var(--line);padding-top:14px;margin-top:2px}
+.hint{color:var(--dim);font-size:12.5px;font-family:var(--mono)}
+.tagline{color:var(--muted);font-size:13.5px;line-height:1.55;max-width:60ch;margin:16px 2px 0}
+
+/* --- the spectrogram leads, milled into the chassis --- */
+.stage{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--proud);padding:16px}
+.silk{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:11px}
+.silk h2{font-family:var(--silk);font-weight:600;font-size:14px;letter-spacing:.3em;text-transform:uppercase;margin:0;color:var(--muted)}
+.silk .meta{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+canvas{display:block;width:100%;border-radius:9px;background:var(--well);box-shadow:var(--well-sh)}
+.scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:8px}
+
+/* --- readouts: recessed segment displays in one strip --- */
+.readouts{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;margin-top:16px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--proud)}
+@media(max-width:860px){.readouts{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){.readouts{grid-template-columns:1fr}}
+.ro{background:var(--panel);padding:15px 16px 16px}
+.ro .k{font-family:var(--silk);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.ro .v{font-family:var(--mono);font-weight:700;font-size:25px;line-height:1;margin-top:11px;color:var(--amber);background:var(--well);box-shadow:var(--well-sh);border-radius:7px;padding:10px 11px;display:block;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis}
+.ro .v small{font-family:var(--silk);font-size:12px;letter-spacing:.16em;color:var(--dim);font-weight:600;margin-left:5px;text-transform:uppercase}
+.ro .n{color:var(--dim);font-size:11.5px;margin-top:9px;line-height:1.4}
+
+.two{display:grid;gap:16px;grid-template-columns:400px 1fr;margin-top:16px}
+@media(max-width:860px){.two{grid-template-columns:1fr}}
+.lv{display:grid;grid-template-columns:16px 1fr;gap:9px 10px;align-items:center;font-family:var(--silk);font-size:13px;letter-spacing:.2em;color:var(--dim)}
+.bar{height:11px;background:var(--well);border-radius:6px;overflow:hidden;box-shadow:var(--well-sh)}
+/* the ramp is a property of the scale, not of the reading, so the bar carries
+   the full gradient and the reading clips it */
+.bar i{display:block;height:100%;width:100%;transition:clip-path .06s linear;
+  background:linear-gradient(90deg,var(--vu) 0 62%,var(--amber) 62% 86%,var(--hot) 86% 100%);
+  clip-path:inset(0 calc(100% - var(--l,0%)) 0 0)}
+footer{color:var(--dim);font-size:13px;margin-top:30px;line-height:1.65;border-top:1px solid var(--line);padding-top:18px}
 footer a{color:var(--muted)}
-.bar{height:9px;background:#0a1012;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
-.bar i{display:block;height:100%;background:var(--teal);width:0;transition:width .06s linear}
-.lv{display:grid;grid-template-columns:18px 1fr;gap:8px 10px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--dim)}
-.status{font-family:var(--mono);font-size:12px;color:var(--teal)}
-.legend{display:flex;gap:14px;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:9px;flex-wrap:wrap}
-.legend b{color:var(--muted);font-weight:500}
+.drop.over{border-color:var(--amber)}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header>
-  <div>
-    <h1>SPEC<span>TRA</span></h1>
-    <p class="sub">An audio analysis suite that runs entirely in your browser. Nothing is uploaded. Drop a file to read its spectrum, loudness, stereo field, tempo and key.</p>
-  </div>
-  <div class="badge">NO SERVER / NO UPLOAD</div>
-</header>
 
-<div class="card drop" id="drop">
-  <button class="primary" id="pick">Open audio file</button>
-  <button id="demo">Load demo signal</button>
-  <span class="hint" id="hint">Or drag a wav, mp3, flac or m4a anywhere on this page.</span>
-  <input type="file" id="file" accept="audio/*" hidden />
-</div>
-
-<div class="card panel" style="margin-top:14px">
-  <div class="tr">
+<div class="rail drop" id="drop">
+  <div class="mark"><b>SPEC<i>TRA</i></b><span>Audio analyser</span></div>
+  <div class="sep"></div>
+  <div class="transport">
+    <span class="lamp" id="lamp"></span>
     <button id="play" disabled>Play</button>
     <span class="time" id="time">0:00 / 0:00</span>
     <input type="range" id="seek" value="0" min="0" max="1000" disabled />
     <span class="status" id="status"></span>
   </div>
-</div>
-
-<div class="grid cols" style="margin-top:14px">
-  <div class="card stat"><div class="k">Integrated</div><div class="v" id="s-lufs">--<small>LUFS</small></div><div class="n">ITU-R BS.1770-4, gated</div></div>
-  <div class="card stat"><div class="k">Loudness range</div><div class="v" id="s-lra">--<small>LU</small></div><div class="n">10th to 95th percentile</div></div>
-  <div class="card stat"><div class="k">Sample peak</div><div class="v" id="s-peak">--<small>dBFS</small></div><div class="n">Loudest single sample</div></div>
-  <div class="card stat"><div class="k">Tempo</div><div class="v" id="s-bpm">--<small>BPM</small></div><div class="n">Onset flux autocorrelation</div></div>
-  <div class="card stat"><div class="k">Key</div><div class="v" id="s-key">--</div><div class="n">Krumhansl profile match</div></div>
-</div>
-
-<div class="card panel" style="margin-top:14px">
-  <div class="ph"><h2>Spectrogram</h2><span class="meta" id="sg-meta">4096 point FFT / logarithmic frequency</span></div>
-  <canvas id="sg" height="300"></canvas>
-  <div class="legend"><span><b>20 Hz</b> bottom</span><span><b>20 kHz</b> top</span><span>colour is magnitude, dark to gold</span></div>
-</div>
-
-<div class="two" style="margin-top:14px">
-  <div class="card panel">
-    <div class="ph"><h2>Stereo field</h2><span class="meta" id="corr-meta">correlation --</span></div>
-    <canvas id="gonio" height="260"></canvas>
-    <div class="legend"><span>vertical is mono</span><span>horizontal is out of phase</span></div>
+  <div class="src">
+    <button class="primary" id="pick">Open file</button>
+    <button id="demo">Demo signal</button>
+    <span class="hint" id="hint">drag a wav, mp3, flac or m4a anywhere on this page</span>
+    <input type="file" id="file" accept="audio/*" hidden />
   </div>
-  <div class="card panel">
-    <div class="ph"><h2>Levels</h2><span class="meta" id="st-meta">short term --</span></div>
-    <div class="lv" style="margin:10px 0 16px">
+</div>
+
+<p class="tagline">Everything below is measured in this tab. The file is decoded locally, nothing is uploaded, and closing the page is the only cleanup there is.</p>
+
+<div class="stage">
+  <div class="silk"><h2>Spectrogram</h2><span class="meta" id="sg-meta">4096 point FFT / logarithmic frequency / colour is magnitude</span></div>
+  <canvas id="sg" height="330"></canvas>
+  <div class="scale"><span>20 Hz at the foot</span><span>20 kHz at the head</span></div>
+</div>
+
+<div class="readouts">
+  <div class="ro"><div class="k">Integrated</div><span class="v" id="s-lufs">--<small>LUFS</small></span><div class="n">BS.1770-4, gated</div></div>
+  <div class="ro"><div class="k">Range</div><span class="v" id="s-lra">--<small>LU</small></span><div class="n">10th to 95th pct</div></div>
+  <div class="ro"><div class="k">Peak</div><span class="v" id="s-peak">--<small>dBFS</small></span><div class="n">loudest sample</div></div>
+  <div class="ro"><div class="k">Tempo</div><span class="v" id="s-bpm">--<small>BPM</small></span><div class="n">onset autocorrelation</div></div>
+  <div class="ro"><div class="k">Key</div><span class="v" id="s-key">--</span><div class="n">Krumhansl match</div></div>
+</div>
+
+<div class="two">
+  <div class="stage" style="margin-top:0">
+    <div class="silk"><h2>Stereo field</h2><span class="meta" id="corr-meta">correlation --</span></div>
+    <canvas id="gonio" height="300"></canvas>
+    <div class="scale"><span>vertical is mono</span><span>horizontal is out of phase</span></div>
+  </div>
+  <div class="stage" style="margin-top:0">
+    <div class="silk"><h2>Levels</h2><span class="meta" id="st-meta">short term --</span></div>
+    <div class="lv" style="margin:14px 0 20px">
       <span>L</span><div class="bar"><i id="mL"></i></div>
       <span>R</span><div class="bar"><i id="mR"></i></div>
     </div>
-    <canvas id="wave" height="150"></canvas>
-    <div class="legend"><span>waveform overview, playhead in gold</span></div>
+    <canvas id="wave" height="168"></canvas>
+    <div class="scale"><span>waveform overview</span><span>playhead in amber</span></div>
   </div>
 </div>
 
 <footer>
-  Built by <a href="https://bxzex.com">bxzex</a>. Web Audio API, a hand written radix-2 FFT, K-weighted loudness per ITU-R BS.1770-4, and no dependencies at all.
+  Built by <a href="https://bxzex.com">bxzex</a>. Web Audio API, a hand written iterative radix-2 FFT, K-weighted loudness per ITU-R BS.1770-4, and no dependencies at all.
   <a href="https://github.com/bxzex/spectra">Source on GitHub</a>.
 </footer>
 </div>
@@ -276,7 +294,7 @@ function detectKey(mono, sr){
 }
 
 /* ---------- colour ramp: dark slate to teal to gold to bone ---------- */
-const STOPS=[[8,13,15],[22,62,70],[79,179,171],[224,160,74],[246,234,216]];
+const STOPS=[[4,5,6],[26,54,64],[53,194,165],[245,165,36],[250,238,214]];
 function ramp(t){
   t=Math.max(0,Math.min(1,t))*(STOPS.length-1);
   const i=Math.min(STOPS.length-2,Math.floor(t)), f=t-i, a=STOPS[i], b=STOPS[i+1];
@@ -292,11 +310,11 @@ const sg=$("sg"), sgx=sg.getContext("2d");
 const go=$("gonio"), gox=go.getContext("2d");
 const wv=$("wave"), wvx=wv.getContext("2d");
 function sizeAll(){
-  [[sg,300],[go,260],[wv,150]].forEach(([c,h])=>{
+  [[sg,330],[go,300],[wv,168]].forEach(([c,h])=>{
     const d=window.devicePixelRatio||1, r=c.getBoundingClientRect();
     c.width=Math.max(1,Math.round(r.width*d)); c.height=Math.round(h*d); c.style.height=h+"px";
   });
-  sgx.fillStyle="#080d0f"; sgx.fillRect(0,0,sg.width,sg.height);
+  sgx.fillStyle="#040506"; sgx.fillRect(0,0,sg.width,sg.height);
   if(buffer) drawWave();
 }
 window.addEventListener("resize", sizeAll);
@@ -310,7 +328,7 @@ async function load(arrayBuffer, label){
   $("hint").textContent = label + "  /  " + buffer.numberOfChannels + " ch  /  " +
     buffer.sampleRate.toLocaleString() + " Hz  /  " + fmt(buffer.duration);
   $("play").disabled=false; $("seek").disabled=false; offset=0;
-  sgx.fillStyle="#080d0f"; sgx.fillRect(0,0,sg.width,sg.height);
+  sgx.fillStyle="#040506"; sgx.fillRect(0,0,sg.width,sg.height);
   drawWave();
   setStatus("analysing");
   await new Promise(r=>setTimeout(r,16));
@@ -346,8 +364,8 @@ async function analyse(){
 
 function drawWave(){
   const w=wv.width, h=wv.height, d=buffer.getChannelData(0), step=Math.floor(d.length/w)||1;
-  wvx.fillStyle="#080d0f"; wvx.fillRect(0,0,w,h);
-  wvx.fillStyle="#2f6f72";
+  wvx.fillStyle="#040506"; wvx.fillRect(0,0,w,h);
+  wvx.fillStyle="#2c5f5a";
   for(let x=0;x<w;x++){
     let mn=1,mx=-1;
     for(let i=x*step;i<(x+1)*step && i<d.length;i++){ if(d[i]<mn)mn=d[i]; if(d[i]>mx)mx=d[i]; }
@@ -359,7 +377,7 @@ function playhead(){
   if(!buffer) return;
   drawWave();
   const x = (pos()/buffer.duration)*wv.width;
-  wvx.fillStyle="#e0a04a"; wvx.fillRect(x,0,2,wv.height);
+  wvx.fillStyle="#f5a524"; wvx.fillRect(x,0,2,wv.height);
 }
 
 function pos(){ return playing ? Math.min(buffer.duration, offset + (ac.currentTime-startedAt)) : offset; }
@@ -377,15 +395,15 @@ function start(from){
   source.connect(analyser).connect(ac.destination);
   source.connect(split);
   split.connect(splitL,0); split.connect(splitR, buffer.numberOfChannels>1?1:0);
-  source.onended = () => { if(playing && pos()>=buffer.duration-0.05){ playing=false; offset=0; $("play").textContent="Play"; } };
+  source.onended = () => { if(playing && pos()>=buffer.duration-0.05){ playing=false; offset=0; $("play").textContent="Play"; $("lamp").classList.remove("on"); } };
   offset = from; startedAt = ac.currentTime;
   source.start(0, from);
-  playing = true; $("play").textContent="Pause";
+  playing = true; $("play").textContent="Pause"; $("lamp").classList.add("on");
   loop();
 }
 function stop(keep){
   if(source){ try{source.onended=null;source.stop();}catch(e){} source.disconnect(); source=null; }
-  if(!keep){ playing=false; $("play").textContent="Play"; cancelAnimationFrame(raf); }
+  if(!keep){ playing=false; $("play").textContent="Play"; $("lamp").classList.remove("on"); cancelAnimationFrame(raf); }
 }
 
 function loop(){
@@ -416,12 +434,12 @@ function loop(){
   // stereo field: lissajous rotated 45 degrees, plus correlation coefficient
   splitL.getFloatTimeDomainData(dataL); splitR.getFloatTimeDomainData(dataR);
   const gw=go.width, gh=go.height;
-  gox.fillStyle="rgba(8,13,15,.30)"; gox.fillRect(0,0,gw,gh);
-  gox.strokeStyle="#1d2a2e"; gox.lineWidth=1*d;
+  gox.fillStyle="rgba(4,5,6,.30)"; gox.fillRect(0,0,gw,gh);
+  gox.strokeStyle="#1e262b"; gox.lineWidth=1*d;
   gox.beginPath(); gox.moveTo(gw/2,0); gox.lineTo(gw/2,gh); gox.moveTo(0,gh/2); gox.lineTo(gw,gh/2); gox.stroke();
   const sc = Math.min(gw,gh)/2*0.92;
   let sl=0,sr=0,slr=0,pl=0,pr=0;
-  gox.fillStyle="#6fd3c9";
+  gox.fillStyle="#57d8bd";
   for(let i=0;i<dataL.length;i++){
     const l=dataL[i], r=dataR[i];
     sl+=l*l; sr+=r*r; slr+=l*r;
@@ -433,8 +451,8 @@ function loop(){
   }
   const corr = slr/(Math.sqrt(sl*sr)+1e-12);
   $("corr-meta").textContent = "correlation "+(isFinite(corr)?corr.toFixed(2):"--");
-  $("mL").style.width = Math.min(100,(20*Math.log10(pl+1e-9)+60)/60*100)+"%";
-  $("mR").style.width = Math.min(100,(20*Math.log10(pr+1e-9)+60)/60*100)+"%";
+  $("mL").style.setProperty("--l", Math.max(0,Math.min(100,(20*Math.log10(pl+1e-9)+60)/60*100))+"%");
+  $("mR").style.setProperty("--l", Math.max(0,Math.min(100,(20*Math.log10(pr+1e-9)+60)/60*100))+"%");
   const rms = Math.sqrt((sl+sr)/(dataL.length*2));
   $("st-meta").textContent = "rms "+(20*Math.log10(rms+1e-9)).toFixed(1)+" dBFS";
 }
@@ -478,7 +496,7 @@ $("demo").onclick = async () => {
   buffer = await demoSignal();
   $("hint").textContent = "demo signal  /  2 ch  /  44,100 Hz  /  0:16";
   $("play").disabled=false; $("seek").disabled=false; offset=0;
-  sgx.fillStyle="#080d0f"; sgx.fillRect(0,0,sg.width,sg.height);
+  sgx.fillStyle="#040506"; sgx.fillRect(0,0,sg.width,sg.height);
   drawWave(); setStatus("analysing");
   await new Promise(r=>setTimeout(r,16));
   await analyse(); setStatus("ready");
