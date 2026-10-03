@@ -7,21 +7,21 @@
 <meta name="description" content="An audio analysis suite that runs entirely in the browser. Spectrogram, loudness, stereo field, tempo and key." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" />
 <style>
 :root{
   --bg:#070809; --panel:#12161a; --rail:#0d1114; --well:#040506;
   --line:#242c31; --edge:#333d44;
   --ink:#f3efe7; --muted:#97a3a8; --dim:#5f6d73;
   --amber:#f5a524; --vu:#35c2a5; --hot:#e05f3e;
-  --silk:"Barlow Condensed",Inter,system-ui,sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --silk:"Barlow Condensed",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
   /* a panel sits proud of the chassis; a well is milled into it */
   --proud:0 1px 0 rgba(255,255,255,.055) inset, 0 -1px 0 rgba(0,0,0,.6) inset, 0 14px 26px -16px #000;
   --well-sh:0 2px 5px rgba(0,0,0,.85) inset, 0 0 0 1px #000 inset;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 body{
   padding:0 18px 60px;
   background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px);
@@ -34,7 +34,9 @@ body{
 .mark b{font-family:var(--silk);font-weight:700;font-size:34px;letter-spacing:-.01em;line-height:1;color:var(--ink)}
 .mark span{font-family:var(--silk);font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
 .sep{width:1px;align-self:stretch;background:var(--line);min-height:34px}
-.transport{display:flex;align-items:center;gap:14px;flex:1;min-width:280px}
+.transport{display:flex;align-items:center;gap:14px;flex:1 1 280px;min-width:0;flex-wrap:wrap}
+@media(max-width:600px){.rail .sep{display:none}.transport input[type=range]{flex-basis:100%}}
+.transport input[type=range]{min-width:0}
 .lamp{width:8px;height:8px;border-radius:50%;background:#2a3338;box-shadow:0 0 0 1px #000 inset}
 .lamp.on{background:var(--vu)}
 button{font-family:var(--silk);font-weight:600;font-size:15px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);background:#1b2228;border:1px solid var(--edge);border-radius:8px;padding:9px 16px;cursor:pointer;
@@ -137,7 +139,7 @@ footer a{color:var(--muted)}
 </div>
 
 <footer>
-  Built by <a href="https://bxzex.com">bxzex</a>. Web Audio API, a hand written iterative radix-2 FFT, K-weighted loudness per ITU-R BS.1770-4, and no dependencies at all.
+  © 2026 <a href="https://bxzex.com">bxzex</a>. Web Audio API, a hand written iterative radix-2 FFT, K-weighted loudness per ITU-R BS.1770-4, and no dependencies at all.
   <a href="https://github.com/bxzex/spectra">Source on GitHub</a>.
 </footer>
 </div>
@@ -493,7 +495,7 @@ $("demo").onclick = async () => {
   ac = ac || new (window.AudioContext||window.webkitAudioContext)();
   setStatus("rendering");
   buffer = await demoSignal();
-  $("hint").textContent = "demo signal  /  2 ch  /  44,100 Hz  /  0:16";
+  $("hint").textContent = "demo signal  /  2 ch  /  44,100 Hz  /  0:" + String(Math.round(buffer.duration)).padStart(2,"0");
   $("play").disabled=false; $("seek").disabled=false; offset=0;
   sgx.fillStyle="#040506"; sgx.fillRect(0,0,sg.width,sg.height);
   drawWave(); setStatus("analysing");
